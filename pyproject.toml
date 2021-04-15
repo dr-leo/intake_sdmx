@@ -1,0 +1,45 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "intake_sdmx"
+author = "dr-leo"
+author-email = "fhaxbox66@gmail.com"
+home-page = "https://github.com/dr-leo/pandasdmx"
+dist-name = "intake_sdmx"
+description-file = "README.rst"
+requires = [
+    "pandasdmx >= 1.0.1",
+    "intake >= 0.6",
+requires-python = ">=3.7.3,<4"
+keywords = "statistics, SDMX, intake, data, economics, science, plot"
+classifiers = [
+"Intended Audience :: Developers",
+"Intended Audience :: Science/Research",
+    "Intended Audience :: Financial and Insurance Industry",
+"Development Status :: 3 - Alpha",
+"Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+"License :: OSI Approved :: Apache Software License"]
+
+[tool.flit.metadata.requires-extra]  
+doc = ["sphinx >= 2.3", 
+"IPython"]
+test = ["pytest >= 5", 
+"pytest-remotedata >= 0.3.1", 
+"requests-mock >= 1.4"]
+
+[tool.flit.entrypoints."intake.drivers"]  
+sdmx = ["intake_sdmx.core:SDMXCat",
+    "intake_sdmx.core:SDMXDataflows"] 
+
+[tool.flit.metadata.urls]
+Documentation = "https://pandasdmx.readthedocs.io/en/latest/"
+
+[tool.flit.sdist]
+include = ["LICENSE", 'pytest.ini']
