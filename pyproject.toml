@@ -10,8 +10,8 @@ home-page = "https://github.com/dr-leo/pandasdmx"
 dist-name = "intake_sdmx"
 description-file = "README.rst"
 requires = [
-    "pandasdmx >= 1.0.1",
-    "intake >= 0.6",
+    "pandasdmx >= 1.5.0",
+    "intake >= 0.6.2"]
 requires-python = ">=3.7.3,<4"
 keywords = "statistics, SDMX, intake, data, economics, science, plot"
 classifiers = [
@@ -35,8 +35,9 @@ test = ["pytest >= 5",
 "requests-mock >= 1.4"]
 
 [tool.flit.entrypoints."intake.drivers"]  
-sdmx = ["intake_sdmx.core:SDMXCat",
-    "intake_sdmx.core:SDMXDataflows"] 
+sdmx_sources = "intake_sdmx:SDMXSources"
+sdmx_dataflows = "intake_sdmx:SDMXDataflows"
+sdmx_data = "intake_sdmx:SDMXData" 
 
 [tool.flit.metadata.urls]
 Documentation = "https://pandasdmx.readthedocs.io/en/latest/"
