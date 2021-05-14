@@ -16,12 +16,10 @@ class LazyDict(MutableMapping):
         super().__init__()
         self._dict = dict(*args, **kwargs)
         self._func = func
-        self._evaluated = set()
         
     def __getitem__(self, key):
-        if key not in self._evaluated:
+        if self._dict[key] is  None:
             self._dict[key] = self._func(key) 
-            self._evaluated.add(key)
         return self._dict[key]
         
     def __setitem__(self, key, value):
@@ -111,14 +109,15 @@ class SDMXDataflows(Catalog):
             # only dimensions with e                numeration, i.e. values are codes
             if lr.enumerated:
                 ci = dim.concept_identity
-                codes = [c for c in lr.enumerated.items.keys()]
+                codes = [*lr.enumerated.items]
                 p = UserParameter(
                     name=dim.id,
                     description=ci.name.en,
                     type='str',
                     allowed=codes, default=codes[0])
                 params.append(p)
-        return LocalCatalogEntry(name=flow_id, description=descr, driver=SDMXData, direct_access=True, args={},
+        args = {u.name : u.default for u in params}        
+        return LocalCatalogEntry(name=flow_id, description=descr, driver=SDMXData, direct_access=True, args=args,
              cache=[], parameters=params, 
              metadata=metadata, catalog_dir='',
              getenv=False, getshell=False, catalog=self)
@@ -133,10 +132,11 @@ class SDMXData(intake.source.base.DataSource):
     container = 'dataframe'
     partition_access = True
 
-    def __init__(self,  metadata={}):
-        super(SDMXData, self).__init__( metadata=metadata)
+    def __init__(self, metadata={}, **kwargs):
+        super(SDMXData, self).__init__(metadata=metadata)
         name = metadata['dataflow_id']
         self.name = name
+        self.kwargs = kwargs
         
     
     def read(self):
