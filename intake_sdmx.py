@@ -102,14 +102,23 @@ class SDMXDataflows(Catalog):
         metadata = self.metadata.copy()
         metadata['dataflow_id'] = flow_id
         metadata['structure_id'] = dsd.id
-        # Make user params for  enumerated  
+        # Make user params for coded dimensions
+        # Check for any content constraints to codelists
+        if hasattr(flow_msg, 'constraint'):
+            constraint = next(iter(flow_msg.constraint.
+                values())).data_content_region[0].member
+        else:
+            constraint = None
         params = []
         for dim in dsd.dimensions:
             lr = dim.local_representation
-            # only dimensions with e                numeration, i.e. values are codes
+            # only dimensions with enumeration, i.e. where values are codes
             if lr.enumerated:
                 ci = dim.concept_identity
-                codes = [*lr.enumerated.items]
+                if constraint and dim.id in constraint:
+                    codes = [c for c in lr.enumerated.items if c in constraint[dim.id]]
+                else:
+                    codes = [*lr.enumerated.items]
                 p = UserParameter(
                     name=dim.id,
                     description=ci.name.en,
