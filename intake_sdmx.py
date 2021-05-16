@@ -72,6 +72,25 @@ class SDMXSources(Catalog):
                      getenv=False, getshell=False, catalog=self)
                 self._entries[source_id] = e
 
+class SDMXCodeParam(UserParameter):
+    def validate(self, value):
+        # Convert short-form multiple selections to list, e.g. 'DE+FR'
+        if isinstance(value, str) and '+' in value:
+            value = value.split('+')
+        # Make allowed codes as list, 
+        # i.e. extract the key from each dict
+        allowed_codes = [next(iter(c)) for c in self.allowed]        
+        # Single code as str
+        if isinstance(value, str): 
+            if (value not in allowed_codes):
+                raise ValueError('%s=%s is not one of the allowed values: %s' % (
+                    self.name, value, ','.join(map(str, self.allowed))))
+        # So value must be an  iterable  of str, e.g. multiple selection
+        elif not all(c in allowed_codes for c in value): 
+            not_allowed = [c for c in value if c not in  allowed_codes]
+            raise ValueError('%s=%s is not one of the allowed values: %s' % (
+            self.name, not_allowed, ','.join(map(str, self.allowed))))
+        return value
 
 class SDMXDataflows(Catalog):
     '''
@@ -110,23 +129,27 @@ class SDMXDataflows(Catalog):
         else:
             constraint = None
         params = []
+        # params for coded dimensions
         for dim in dsd.dimensions:
             lr = dim.local_representation
             # only dimensions with enumeration, i.e. where values are codes
             if lr.enumerated:
                 ci = dim.concept_identity
+                # Get code ID and English name as its description
                 if constraint and dim.id in constraint:
-                    codes = [c for c in lr.enumerated.items if c in constraint[dim.id]]
+                    codes = [{c.id : c.name.en} for c in lr.enumerated.items.values() if c in constraint[dim.id]]
                 else:
-                    codes = [*lr.enumerated.items]
-                p = UserParameter(
+                    codes = [{c.id : c.name.en} for c in lr.enumerated.items.values()]
+                p = SDMXCodeParam(
                     name=dim.id,
                     description=ci.name.en,
-                    type='str',
-                    allowed=codes, default=codes[0])
+                    type=None,
+                    allowed=codes,
+# set first code as default                    
+                    default=next(iter(codes[0])))
                 params.append(p)
-        args = {u.name : u.default for u in params}        
-        return LocalCatalogEntry(name=flow_id, description=descr, driver=SDMXData, direct_access=True, args=args,
+                
+        return LocalCatalogEntry(name=flow_id, description=descr, driver=SDMXData, direct_access=True, 
              cache=[], parameters=params, 
              metadata=metadata, catalog_dir='',
              getenv=False, getshell=False, catalog=self)
@@ -141,9 +164,9 @@ class SDMXData(intake.source.base.DataSource):
     container = 'dataframe'
     partition_access = True
 
-    def __init__(self, metadata={}, **kwargs):
-        super(SDMXData, self).__init__(metadata=metadata)
-        name = metadata['dataflow_id']
+    def __init__(self, **kwargs):
+        super(SDMXData, self).__init__(**kwargs)
+        name = self.metadata['dataflow_id']
         self.name = name
         self.kwargs = kwargs
         
