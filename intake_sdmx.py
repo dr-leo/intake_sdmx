@@ -18,7 +18,7 @@ class LazyDict(MutableMapping):
         self._func = func
         
     def __getitem__(self, key):
-        if self._dict[key] is  None:
+        if self._dict[key] is None:
             self._dict[key] = self._func(key) 
         return self._dict[key]
         
@@ -73,6 +73,10 @@ class SDMXSources(Catalog):
                 self._entries[source_id] = e
 
 class SDMXCodeParam(UserParameter):
+    def __init__(self, allowed=None, **kwargs):
+        super(SDMXCodeParam, self).__init__(**kwargs)
+        self.allowed = allowed
+
     def validate(self, value):
         # Convert short-form multiple selections to list, e.g. 'DE+FR'
         if isinstance(value, str) and '+' in value:
@@ -123,7 +127,7 @@ class SDMXDataflows(Catalog):
         metadata['structure_id'] = dsd.id
         # Make user params for coded dimensions
         # Check for any content constraints to codelists
-        if hasattr(flow_msg, 'constraint'):
+        if hasattr(flow_msg, 'constraint') and flow_msg.constraint:
             constraint = next(iter(flow_msg.constraint.
                 values())).data_content_region[0].member
         else:
@@ -143,14 +147,15 @@ class SDMXDataflows(Catalog):
                 p = SDMXCodeParam(
                     name=dim.id,
                     description=ci.name.en,
-                    type=None,
+                    type="str",
                     allowed=codes,
 # set first code as default                    
                     default=next(iter(codes[0])))
                 params.append(p)
-                
+
+        args = {p.name: "{{%s}}" % p.name for p in params}
         return LocalCatalogEntry(name=flow_id, description=descr, driver=SDMXData, direct_access=True, 
-             cache=[], parameters=params, 
+             cache=[], parameters=params, args=args,
              metadata=metadata, catalog_dir='',
              getenv=False, getshell=False, catalog=self)
                  
@@ -164,12 +169,11 @@ class SDMXData(intake.source.base.DataSource):
     container = 'dataframe'
     partition_access = True
 
-    def __init__(self, **kwargs):
-        super(SDMXData, self).__init__(**kwargs)
+    def __init__(self, metadata=None, **kwargs):
+        super(SDMXData, self).__init__(metadata=metadata)
         name = self.metadata['dataflow_id']
         self.name = name
         self.kwargs = kwargs
-        
     
     def read(self):
         name = self.metadata['dataflow_id'] + '_resources'
