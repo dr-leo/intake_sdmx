@@ -93,8 +93,8 @@ class SDMXCodeParam(UserParameter):
         if isinstance(value, str) and "+" in value:
             value = value.split("+")
         # convert  allowed codes to  list,
-        # i.e. extract the key from each dict
-        allowed_codes = [next(iter(c)) for c in self.allowed]
+        # i.e. extract the first part before the ':' from the str
+        allowed_codes = [c.partition(':')[0] for c in self.allowed]
         # Single code as str
         if isinstance(value, str):
             if value not in allowed_codes:
@@ -139,7 +139,7 @@ class SDMXDataflows(Catalog):
         flow_msg = self.req.dataflow(flow_id)
         flow = flow_msg.dataflow[flow_id]
         dsd = flow.structure
-        descr = flow.name.en
+        descr = str(flow.name)
         metadata = self.metadata.copy()
         metadata["dataflow_id"] = flow_id
         metadata["structure_id"] = dsd.id
@@ -160,15 +160,15 @@ class SDMXDataflows(Catalog):
                 ci = dim.concept_identity
                 # Get code ID and  name as its description
                 if constraint and dim.id in constraint:
-                    codes = [
-                        {c.id: str(c.name)}
-                        for c in lr.enumerated.items.values()
-                        if c in constraint[dim.id]
-                    ]
+                    codes_iter = (c for c in lr.enumerated.items.values()
+                        if c in constraint[dim.id])
                 else:
-                    codes = [{c.id: str(c.name)} for c in lr.enumerated.items.values()]
-                # allow also "" to indicate wild-carded dimension
-                codes.append({"": "wild-carded"})
+                    codes_iter =  lr.enumerated.items.values()
+                codes = [':'.join((c.id, str(c.name)))
+                    for c in codes_iter]
+                
+                # allow "" to indicate wild-carded dimension
+                codes.append(":not specified")
                 p = SDMXCodeParam(
                     name=dim.id,
                     description=str(ci.name),
@@ -186,15 +186,18 @@ class SDMXDataflows(Catalog):
                     name="startPeriod",
                     description="startPeriod",
                     type="datetime",
-                    default=str(year - 1),
+                    default=str(year - 1)
                 ),
                 UserParameter(
                     name="endPeriod",
                     description="endPeriod",
-                    type="datetime",
-                    default=str(year),
-                ),
-            ]
+                    type="datetime"),
+                # UserParameter(
+                    # name='writer_options',
+                    # description="""kwargs to be passed to `pandasdmx.to_pandas()` \
+                                  # to control DataFrame layout etc.""",
+                    # type='dict')
+                    ]
         )
         args = {p.name: f"{{{{{p.name}}}}}" for p in params}
         return LocalCatalogEntry(
@@ -225,12 +228,31 @@ class SDMXData(intake.source.base.DataSource):
 
     def __init__(self, metadata=None, **kwargs):
         super(SDMXData, self).__init__(metadata=metadata)
-        name = self.metadata["dataflow_id"]
-        self.name = name
-        self.kwargs = kwargs
+        self.name = self.metadata["dataflow_id"]
+        self.req = sdmx.Request(self.metadata["source_id"])
 
     def read(self):
-        name = self.metadata["dataflow_id"] + "_resources"
+        # construct key 
+        key_ids = (p.name for p in self.entry._user_parameters 
+            if isinstance(p, SDMXCodeParam))
+        key = {i: self._captured_init_kwargs[i] for i in key_ids 
+            if self._captured_init_kwargs[i]}
+        # params for request. Currently, only start- and endPeriod are supported
+        params = {k: str(self._captured_init_kwargs[k].year)
+            for k in ['startPeriod', 'endPeriod']}
+        # remove endPeriod if it is prior to startPeriod (which is the default)
+        if params['endPeriod'] < params['startPeriod']:
+            del params['endPeriod']
+        # Now request the data via HTTP
+        # TODO: handle writer options and other Request.get kwargs eg. fromfile, timeout.
+        data_msg = self.req.data(
+            self.metadata['dataflow_id'], 
+            key=key, 
+            params=params)
+        self._dataframe = data_msg.to_pandas()
+        return self._dataframe
+        
+            
 
     def _close(self):
         self._dataframe = None
