@@ -87,27 +87,28 @@ class SDMXCodeParam(UserParameter):
     def __init__(self, allowed=None, **kwargs):
         super(SDMXCodeParam, self).__init__(**kwargs)
         self.allowed = allowed
+        # isolate  codes from rich descriptions   
+        # and store them as set for efficient validation
+        self.allowed_codes = {c.partition(':')[0] for c in allowed}
+
 
     def validate(self, value):
         # Convert short-form multiple selections to list, e.g. 'DE+FR'
         if isinstance(value, str) and "+" in value:
             value = value.split("+")
-        # convert  allowed codes to  list,
-        # i.e. extract the first part before the ':' from the str
-        allowed_codes = [c.partition(':')[0] for c in self.allowed]
         # Single code as str
         if isinstance(value, str):
-            if value not in allowed_codes:
+            if value not in self.allowed_codes:
                 raise ValueError(
                     "%s=%s is not one of the allowed values: %s"
-                    % (self.name, value, ",".join(map(str, self.allowed)))
+                    % (self.name, value, ",".join(map(str, self.allowed_codes)))
                 )
         # So value must be an  iterable  of str, e.g. multiple selection
-        elif not all(c in allowed_codes for c in value):
-            not_allowed = [c for c in value if c not in allowed_codes]
+        elif not all(c in self.allowed_codes for c in value):
+            not_allowed = [c for c in value if c not in self.allowed_codes]
             raise ValueError(
                 "%s=%s is not one of the allowed values: %s"
-                % (self.name, not_allowed, ",".join(map(str, self.allowed)))
+                % (self.name, not_allowed, ",".join(map(str, self.allowed_codes)))
             )
         return value
 
@@ -192,11 +193,29 @@ class SDMXDataflows(Catalog):
                     name="endPeriod",
                     description="endPeriod",
                     type="datetime"),
-                # UserParameter(
-                    # name='writer_options',
-                    # description="""kwargs to be passed to `pandasdmx.to_pandas()` \
-                                  # to control DataFrame layout etc.""",
-                    # type='dict')
+                UserParameter(
+                    name='dtype',
+                    description="""data type for pandas.DataFrame. See pandas docs 
+                        for      allowed values. 
+                        Default is '' which translates to 'float64'.""",
+                    type='str'),
+                UserParameter(
+                    name='attributes',
+                    description="""Include any attributes alongside observations in the DataFrame. See pandasdmx docx for details.
+Examples: 'osgd' for all attributes, or 
+'os': only attributes at observation and series level.""",
+                    type='str'),
+                UserParameter(
+                    name='datetime',
+                    description="""See pandasdmx docx for details.""",
+                    type='bool',
+                    default=True),
+                UserParameter(
+                    name='periods',
+                    description="""Use 'FREQ' dimension to generate a PeriodIndex.""",
+                    type='bool',
+                    default=False),
+
                     ]
         )
         args = {p.name: f"{{{{{p.name}}}}}" for p in params}
@@ -230,15 +249,16 @@ class SDMXData(intake.source.base.DataSource):
         super(SDMXData, self).__init__(metadata=metadata)
         self.name = self.metadata["dataflow_id"]
         self.req = sdmx.Request(self.metadata["source_id"])
+        self.kwargs = kwargs
 
     def read(self):
         # construct key 
         key_ids = (p.name for p in self.entry._user_parameters 
             if isinstance(p, SDMXCodeParam))
-        key = {i: self._captured_init_kwargs[i] for i in key_ids 
-            if self._captured_init_kwargs[i]}
+        key = {i: self.kwargs[i] for i in key_ids 
+            if self.kwargs[i]}
         # params for request. Currently, only start- and endPeriod are supported
-        params = {k: str(self._captured_init_kwargs[k].year)
+        params = {k: str(self.kwargs[k].year)
             for k in ['startPeriod', 'endPeriod']}
         # remove endPeriod if it is prior to startPeriod (which is the default)
         if params['endPeriod'] < params['startPeriod']:
@@ -249,7 +269,16 @@ class SDMXData(intake.source.base.DataSource):
             self.metadata['dataflow_id'], 
             key=key, 
             params=params)
-        self._dataframe = data_msg.to_pandas()
+        # get writer config. 
+        # Capture only non-empty values as these will be filled by the writer
+        writer_config = {k: self.kwargs[k]
+            for k in ['dtype', 'attributes', 'datetime']
+            if self.kwargs[k]}
+        # massage some values  arg to conform to writer API
+        periods = self.kwargs['periods']
+        if periods: 
+            writer_config['datetime'] = {'freq': 'FREQ'}
+        self._dataframe = data_msg.to_pandas(**writer_config)
         return self._dataframe
         
             
