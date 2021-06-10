@@ -1,23 +1,61 @@
 import intake
 import intake_sdmx
+from pandasdmx import Request, read_sdmx
+import pandas as pd
 import pytest
+from pathlib import Path
+
+data_path = Path(__file__).parent.joinpath('data')
+
+def filepath(name):
+    return data_path.joinpath(name)
+    
+@pytest.fixture
+def source():
+    return  intake.open_sdmx_sources()
+
+@pytest.fixture
+def ecb(source, mocker):
+    mocker.patch.object(Request, "get",
+        return_value=read_sdmx(filepath('ecb_dataflows.xml')))
+    return  source.ECB
+
+@pytest.fixture
+def exr(ecb, mocker):
+    mocker.patch.object(Request, "get",
+        return_value=read_sdmx(filepath('exr_flow.xml')))
+    return ecb.EXR
 
 
-def test_ECB_EXR():
-    sources = intake.open_sdmx_sources()
-    assert isinstance(sources, intake_sdmx.SDMXSources)
-    ecb = sources.ECB
+def test_source(source):
+    assert isinstance(source, intake_sdmx.SDMXSources)
+    
+def test_ecb(ecb):
     assert isinstance(ecb, intake_sdmx.SDMXDataflows)
-    # pick the dataflow for exchange rates
-    exr = ecb.EXR
+    
+def test_exr(exr):    
     assert isinstance(exr, intake_sdmx.SDMXData)
     assert exr.name == "EXR"
     assert exr.description == "Exchange Rates"
     # check default values
-    assert exr.kwargs["FREQ"] == ""
+    assert exr.kwargs["FREQ"] == "n/a"
     # new instance with valid arg
     exr2 = exr(FREQ="A")
     assert exr2.kwargs["FREQ"] == "A"
     # new instance with invalid arg
     with pytest.raises(ValueError):
         exr3 = exr(FREQ="invalid")
+
+@pytest.fixture
+def exr_data(exr, mocker):
+    flow_id = exr.metadata['dataflow_id']
+    flow_msg = exr.req.dataflow(flow_id)
+    dsd = flow_msg.dataflow[flow_id].structure
+    mocker.patch.object(Request, "get",
+        return_value=read_sdmx(filepath('exr_data.xml'), dsd=dsd))
+    return exr(index_type='period').read()
+    
+def test_exr_read(exr_data):
+    assert exr_data.shape == (13,12)
+    assert isinstance(exr_data.index, pd.PeriodIndex)
+    
