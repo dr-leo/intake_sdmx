@@ -22,6 +22,9 @@ class LazyDict(MutableMapping):
         self._dict = dict(*args, **kwargs)
         self._func = func
 
+    def update(self, *args, **kwargs):
+        return self._dict.update(*args, **kwargs)
+
     def __getitem__(self, key):
         if self._dict[key] is None:
             self._dict[key] = self._func(key)
@@ -30,6 +33,9 @@ class LazyDict(MutableMapping):
     def __setitem__(self, key, value):
         return self._dict.__setitem__(key, value)
 
+    def __contains__(self, key):
+        return self._dict.__contains__(key)
+        
     def __len__(self):
         return self._dict.__len__()
 
@@ -70,7 +76,7 @@ class SDMXSources(Catalog):
                 descr = source.name
                 metadata = {"source_id": source_id}
                 e = LocalCatalogEntry(
-                    source_id,
+                    source_id + "_SDMX_dataflows",
                     descr,
                     SDMXDataflows,
                     direct_access=True,
@@ -123,10 +129,10 @@ class SDMXDataflows(Catalog):
     container = "catalog"
     partition_access = False
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._entries = LazyDict(self._make_dataflow_entry)
+    def _make_entries_container(self):
+        return LazyDict(self._make_dataflow_entry)
 
+    def _load(self):
         # read metadata on dataflows
         self.name = self.metadata["source_id"] + "_SDMX_dataflows"
         # Request dataflows from remote SDMX service
@@ -267,17 +273,12 @@ class SDMXDataflows(Catalog):
             catalog=self,
         )
 
-
-
     @reload_on_change
-    def search(self, text, depth=2):
-        import copy
+    def search(self, text):
         words = text.lower().split()
-        entries = {k: copy.copy(v)for k, v in self.walk(depth=depth).items()
-                   if any(word in str(v.describe().values()).lower()
-                   for word in words)}
-        cat = Catalog.from_dict(
-            entries, name=self.name + "_search",
+        cat = SDMXDataflows(
+            name=self.name + "_search",
+            description = self.description,
             ttl=self.ttl,
             getenv=self.getenv,
             getshell=self.getshell,
@@ -285,41 +286,18 @@ class SDMXDataflows(Catalog):
             storage_options=self.storage_options)
         cat.metadata['search'] = {'text': text, 'upstream': self.name}
         cat.cat = self
-        for e in entries.values():
-            e._catalog = cat
+        cat._entries._dict.clear()
+        result = [k for k in self
+                   if any(word in k.lower()
+                   for word in words)]
+        cat._entries.update({k : None for k in result})
+        cat._entries.update({self.name2id[k] : None 
+            for k in result})   
         return cat
 
     def filter(self, func):
-        """
-        Create a Catalog of a subset of entries based on a condition
-
-        .. warning ::
-
-           This function operates on CatalogEntry objects not DataSource
-           objects.
-
-        .. note ::
-
-            Note that, whatever specific class this is performed on,
-            the return instance is a Catalog. The entries are passed
-            unmodified, so they will still reference the original catalog
-            instance and include its details such as directory,.
-
-        Parameters
-        ----------
-        func : function
-            This should take a CatalogEntry and return True or False. Those
-            items returning True will be included in the new Catalog, with the
-            same entry names
-
-        Returns
-        -------
-        Catalog
-           New catalog with Entries that still refer to their parents
-        """
-        return Catalog.from_dict({key: entry for key, entry in self._entries.keys()
-                                  if func(key)})
-
+        raise NotImplemented
+        
 class SDMXData(intake.source.base.DataSource):
     """
     Driver for SDMX data sets of  a given SDMX dataflow
