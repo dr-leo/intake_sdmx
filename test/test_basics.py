@@ -32,8 +32,10 @@ def test_source(source):
     
 def test_ecb(ecb):
     assert isinstance(ecb, intake_sdmx.SDMXDataflows)
+    assert 'EXR' in ecb
+    assert "Exchange Rates" in ecb
     
-def test_exr(exr):    
+def test_exr(exr, ecb):    
     assert isinstance(exr, intake_sdmx.SDMXData)
     assert exr.name == "EXR"
     assert exr.description == "Exchange Rates"
@@ -46,10 +48,11 @@ def test_exr(exr):
     with pytest.raises(ValueError):
         exr3 = exr(FREQ="invalid")
 
+
 @pytest.fixture
 def exr_data(exr, mocker):
     flow_id = exr.metadata['dataflow_id']
-    flow_msg = exr.req.dataflow(flow_id)
+    flow_msg = read_sdmx(filepath('exr_flow.xml')) 
     dsd = flow_msg.dataflow[flow_id].structure
     mocker.patch.object(Request, "get",
         return_value=read_sdmx(filepath('exr_data.xml'), dsd=dsd))

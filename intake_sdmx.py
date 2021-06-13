@@ -3,6 +3,7 @@
 
 import intake
 from intake.catalog import Catalog
+from intake.catalog.utils import reload_on_change
 from intake.catalog.local import LocalCatalogEntry, UserParameter
 import pandasdmx as sdmx
 from collections.abc import MutableMapping
@@ -61,9 +62,6 @@ class SDMXSources(Catalog):
 
     def __init__(self, *args, **kwargs):
         super(SDMXSources, self).__init__(*args, **kwargs)
-        # populate this catalog with empty sub-catalogs for each source.
-        # This does not require remote access.
-        # Sub-catalogs can read  the dataflows provided by each source.
         # exclude sources which do not support dataflows
         # and datasets (eg json-based ABS and OECD)
         excluded = ["ABS", "OECD", "IMF", "SGR", "STAT_EE"]
@@ -76,7 +74,9 @@ class SDMXSources(Catalog):
                     descr,
                     SDMXDataflows,
                     direct_access=True,
-                    args={},
+                    # set storage_options to {} if not set. This avoids TypeError 
+                    # when passing it to sdmx.Request() later
+                    args={'storage_options': self.storage_options or {}},
                     cache=[],
                     parameters=[],
                     metadata=metadata,
@@ -130,13 +130,25 @@ class SDMXDataflows(Catalog):
         # read metadata on dataflows
         self.name = self.metadata["source_id"] + "_SDMX_dataflows"
         # Request dataflows from remote SDMX service
-        self.req = sdmx.Request(self.metadata["source_id"])
+        self.req = sdmx.Request(self.metadata["source_id"],
+            **self.storage_options)
         # get full list of dataflows
         self._flows_msg = self.req.dataflow()
-        for flow_id in self._flows_msg.dataflow:
+        # to mapping from names to IDs for later back-translation
+        # We use this catalog to store 2 entries per dataflow: ID and# human-readable name
+        self.name2id = {}
+        for dataflow in self._flows_msg.dataflow.values():
+            flow_id, flow_name = dataflow.id, str(dataflow.name)
+            # make 2 entries per dataflow using its ID and name
             self._entries[flow_id] = None
+            self._entries[flow_name] = None
+            self.name2id[flow_name] = flow_id
+            
 
     def _make_dataflow_entry(self, flow_id):
+        # if flow_id is actually its name, get the real id
+        if flow_id in self.name2id:
+            flow_id = self.name2id[flow_id]
         # Download metadata on specified dataflow
         flow_msg = self.req.dataflow(flow_id)
         flow = flow_msg.dataflow[flow_id]
@@ -239,6 +251,7 @@ class SDMXDataflows(Catalog):
                     ]
         )
         args = {p.name: f"{{{{{p.name}}}}}" for p in params}
+        args['storage_options'] = self.storage_options
         return LocalCatalogEntry(
             name=flow_id,
             description=descr,
@@ -255,6 +268,58 @@ class SDMXDataflows(Catalog):
         )
 
 
+
+    @reload_on_change
+    def search(self, text, depth=2):
+        import copy
+        words = text.lower().split()
+        entries = {k: copy.copy(v)for k, v in self.walk(depth=depth).items()
+                   if any(word in str(v.describe().values()).lower()
+                   for word in words)}
+        cat = Catalog.from_dict(
+            entries, name=self.name + "_search",
+            ttl=self.ttl,
+            getenv=self.getenv,
+            getshell=self.getshell,
+            metadata=(self.metadata or {}).copy(),
+            storage_options=self.storage_options)
+        cat.metadata['search'] = {'text': text, 'upstream': self.name}
+        cat.cat = self
+        for e in entries.values():
+            e._catalog = cat
+        return cat
+
+    def filter(self, func):
+        """
+        Create a Catalog of a subset of entries based on a condition
+
+        .. warning ::
+
+           This function operates on CatalogEntry objects not DataSource
+           objects.
+
+        .. note ::
+
+            Note that, whatever specific class this is performed on,
+            the return instance is a Catalog. The entries are passed
+            unmodified, so they will still reference the original catalog
+            instance and include its details such as directory,.
+
+        Parameters
+        ----------
+        func : function
+            This should take a CatalogEntry and return True or False. Those
+            items returning True will be included in the new Catalog, with the
+            same entry names
+
+        Returns
+        -------
+        Catalog
+           New catalog with Entries that still refer to their parents
+        """
+        return Catalog.from_dict({key: entry for key, entry in self._entries.keys()
+                                  if func(key)})
+
 class SDMXData(intake.source.base.DataSource):
     """
     Driver for SDMX data sets of  a given SDMX dataflow
@@ -268,7 +333,8 @@ class SDMXData(intake.source.base.DataSource):
     def __init__(self, metadata=None, **kwargs):
         super(SDMXData, self).__init__(metadata=metadata)
         self.name = self.metadata["dataflow_id"]
-        self.req = sdmx.Request(self.metadata["source_id"])
+        self.req = sdmx.Request(self.metadata["source_id"],
+            **self.storage_options)
         self.kwargs=kwargs
 
     def read(self):
@@ -284,7 +350,7 @@ class SDMXData(intake.source.base.DataSource):
         if params['endPeriod'] < params['startPeriod']:
             del params['endPeriod']
         # Now request the data via HTTP
-        # TODO: handle writer options and other Request.get kwargs eg. fromfile, timeout.
+        # TODO: handle   Request.get kwargs eg. fromfile, timeout.
         data_msg = self.req.data(
             self.metadata['dataflow_id'], 
             key=key, 
