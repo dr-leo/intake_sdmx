@@ -66,8 +66,7 @@ class SDMXSources(Catalog):
     container = "catalog"
     partition_access = False
 
-    def __init__(self, *args, **kwargs):
-        super(SDMXSources, self).__init__(*args, **kwargs)
+    def _load(self):
         # exclude sources which do not support dataflows
         # and datasets (eg json-based ABS and OECD)
         excluded = ["ABS", "OECD", "IMF", "SGR", "STAT_EE"]
