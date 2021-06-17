@@ -14,7 +14,7 @@ def filepath(name):
 
 @pytest.fixture
 def source():
-    return intake.open_sdmx_sources()
+    return intake.open_sdmx()
 
 
 @pytest.fixture

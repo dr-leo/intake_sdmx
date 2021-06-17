@@ -10,7 +10,7 @@ from collections.abc import MutableMapping
 from datetime import date
 from itertools import chain
 
-__version__ = "0.0.3"
+__version__ = "0.1.0"
 
 
 NOT_SPECIFIED = "n/a"
@@ -55,16 +55,10 @@ class SDMXSources(Catalog):
     supported by pandaSDMX
     """
 
-    name = "sdmx_sources"
+    name = "sdmx"
     description = "SDMX sources supported by pandaSDMX"
-    metadata = None
-    ttl = 999999
-    getenv = False
-    getshell = False
-    persist_mode = "default"
     version = __version__
     container = "catalog"
-    partition_access = False
 
     def _load(self):
         # exclude sources which do not support dataflows
