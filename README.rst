@@ -33,14 +33,20 @@ Implemented features:
   as a lazy dict, i.e. the actual
   metadata (= DataStructureDefinition, CodeLIsts etc.) are 
   downloaded only when
-  instantiating a data source for a particular Dataflow. 
-  Thus, even the human-readable description of a Dataflow is 
-  visible only after creating the data source. 
-  Thus, the list of dataflows cannot be searched by keywords. 
-  This feature should be added asap.
+  instantiating a data source for a particular Dataflow.
+Each dataflow occurs twice in the list: first under its dataflow_id (eg. 'EXR'),
+second, under its human-readable description (eg. 'Exchange Rates'). However, accessing
+a dataflow by its description, will return the same
+instance as when accessed by ID.  
+* Dataflows catalog has a search(words) method which returns
+  a catalog of entries where at least one of the wordsoccur in the dataflow's human-readable
+  description. 
 * pass kwargs to a data source to specify a 
   key (= dimension values), startPeriod and endPeriod.
-* download a dataset and return a pandas dataframe
+* download a dataset and return a pandas Series or dataframe
+  kwargs to configure the export process can be specified. Doing so,
+  a dataframe with datetime index, period index, or a Series withmulti-level index can be generated.
+  
   
 License
 -------
