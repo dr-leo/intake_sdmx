@@ -1,34 +1,36 @@
 Ten-line usage example
 ======================
 
+The following example is inspired by the pandaSDMX docs, but adapted to the intake API.
 Suppose we want to analyze annual unemployment data for some European countries.
 All we need to know in advance is the data provider: Eurostat.
 
-pandaSDMX makes it easy to search the directory of dataflows, and the complete structural metadata about the datasets available through the selected dataflow.
-(This example skips these steps; see :doc:`the walkthrough <walkthrough>`.)
+intake's  catalog framework
+makes it easy to search the directory of dataflows, and the complete structural metadata about the datasets available through the selected dataflow.
+(This example skips these steps; see :doc:`the tutorial <tutorial>`.)
 
 The data we want is in a *data flow* with the identifier ``une_rt_a``.
-This dataflow references a *data structure definition* (DSD) with the ID ``DSD_une_rt_a``.
-The DSD, in turn, contains or references all the metadata describing data sets available through this dataflow: the concepts, things measured, dimensions, and lists of codes used to label each dimension.
+
 
 .. ipython:: python
 
-    import pandasdmx as sdmx
-    estat = sdmx.Request('ESTAT')
+    import intake
+    src = intake.open_sdmx()
+    list(src) # list of data providers
+    estat = src.ESTAT 
 
 Download the metadata:
 
 .. ipython:: python
 
-    metadata = estat.datastructure('DSD_une_rt_a')
-    metadata
+    unemployment = estat.une_rt_a
 
 Explore the contents of some code lists:
 
 .. ipython:: python
 
-    for cl in 'CL_AGE', 'CL_UNIT':
-        print(sdmx.to_pandas(metadata.codelist[cl]))
+    unemployment.yaml()[:1000]
+
 
 Next we download a dataset.
 To obtain data on Greece, Ireland and Spain only, we use codes from the code list 'CL_GEO' to specify a *key* for the dimension named ‘GEO’.
@@ -36,10 +38,9 @@ We also use a query *parameter*, 'startPeriod', to limit the scope of the data r
 
 .. ipython:: python
 
-    resp = estat.data(
-        'une_rt_a',
-        key={'GEO': 'EL+ES+IE'},
-        params={'startPeriod': '2007'},
+    unemployment_ireland = unemployment(
+        GEO='IE',
+        startPeriod='2007'
         )
 
 ``resp`` is  a :class:`.DataMessage` object.
@@ -47,9 +48,8 @@ We use its :meth:`~pandasdmx.message.Message.to_pandas` method to convert it to 
 
 .. ipython:: python
 
-    data = resp.to_pandas(
-        datetime={'dim': 'TIME_PERIOD', 'freq': 'FREQ'}).xs('Y15-74', level='AGE', 
-            axis=1, drop_level=False)
+    data = unemployment_ireland.read(
+        index_type='period').xs('Y15-74', level='AGE') 
 
 We can now explore the data set as expressed in a familiar pandas object.
 First, show dimension names:

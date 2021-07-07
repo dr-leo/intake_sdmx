@@ -6,7 +6,7 @@ from intake.catalog import Catalog
 from intake.catalog.utils import reload_on_change
 from intake.catalog.local import LocalCatalogEntry, UserParameter
 import pandasdmx as sdmx
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, MutableSequence
 from datetime import date
 from itertools import chain
 
@@ -16,6 +16,40 @@ __version__ = "0.1.0"
 NOT_SPECIFIED = "n/a"
 
 
+class PowerSet(MutableSequence):
+    def __init__(self, *args):
+        self._list = list(*args)
+        
+    def __contains__(self, s):
+        items = s.split('+')
+        return all(i in self._list for i in items)
+        
+    def __iter__(self):
+        return self._list.__iter__()
+        
+    def __getitem__(self, item):
+        return self._list[item]
+
+    def __delitem__(self, item):
+        return self._list.__delitem__(item)
+    
+    def __setitem__(self, idx, value):
+        return self._list.__delitem__(idx, value)
+        
+    def insert(self, idx, value):
+        return self._list.insert(idx, value)
+    
+    def __delitem__(self, item):
+        return self._list.__delitem__(item)
+        
+    def __len__(self):
+        return len(self._list)
+        
+    def __str__(self):
+        return str(self._list)
+        
+        
+        
 class LazyDict(MutableMapping):
     def __init__(self, func, *args, **kwargs):
         super().__init__()
@@ -178,10 +212,10 @@ class SDMXDataflows(Catalog):
                     )
                 else:
                     codes_iter = lr.enumerated.items.values()
-                codes = {*chain(*((c.id, str(c.name)) for c in codes_iter))}
+                codes = PowerSet(list(chain(*((c.id, str(c.name)) for c in codes_iter))))
 
                 # allow "" to indicate wild-carded dimension
-                codes.add(NOT_SPECIFIED)
+                codes.append(NOT_SPECIFIED)
                 p = UserParameter(
                     name=dim.id,
                     description=str(ci.name),
@@ -292,6 +326,7 @@ class SDMXDataflows(Catalog):
                 if any(word in k.lower() for word in words)
             )
         ]
+        cat._entries.clear()
         cat._entries.update({k: None for k in keys})
         return cat
 

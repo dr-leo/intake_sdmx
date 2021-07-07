@@ -56,6 +56,10 @@ def test_exr(exr, ecb):
     with pytest.raises(ValueError):
         exr3 = exr(FREQ="invalid")
 
+def test_exr_many_codes(exr, ecb):
+    cur_str = 'JPY+USD+CHF'
+    exr2=exr(CURRENCY=cur_str)
+    assert exr2.kwargs['CURRENCY'] == cur_str  
 
 @pytest.fixture
 def exr_data(exr, mocker):
