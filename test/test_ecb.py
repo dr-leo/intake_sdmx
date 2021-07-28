@@ -56,6 +56,7 @@ def test_exr(exr, ecb):
     with pytest.raises(ValueError):
         exr3 = exr(FREQ="invalid")
 
+# This does not work yet as the 'A#B' form fails coersion as it is not a list
 def test_exr_many_codes(exr, ecb):
     cur_str = 'JPY+USD+CHF'
     exr2=exr(CURRENCY=cur_str)

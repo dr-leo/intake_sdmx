@@ -14,42 +14,7 @@ __version__ = "0.1.0"
 
 
 NOT_SPECIFIED = "n/a"
-
-
-class PowerSet(MutableSequence):
-    def __init__(self, *args):
-        self._list = list(*args)
-        
-    def __contains__(self, s):
-        items = s.split('+')
-        return all(i in self._list for i in items)
-        
-    def __iter__(self):
-        return self._list.__iter__()
-        
-    def __getitem__(self, item):
-        return self._list[item]
-
-    def __delitem__(self, item):
-        return self._list.__delitem__(item)
-    
-    def __setitem__(self, idx, value):
-        return self._list.__delitem__(idx, value)
-        
-    def insert(self, idx, value):
-        return self._list.insert(idx, value)
-    
-    def __delitem__(self, item):
-        return self._list.__delitem__(item)
-        
-    def __len__(self):
-        return len(self._list)
-        
-    def __str__(self):
-        return str(self._list)
-        
-        
-        
+  
 class LazyDict(MutableMapping):
     def __init__(self, func, *args, **kwargs):
         super().__init__()
@@ -122,31 +87,9 @@ class SDMXSources(Catalog):
 
 
 class SDMXCodeParam(UserParameter):
-    def __init__(self, allowed=None, **kwargs):
-        super(SDMXCodeParam, self).__init__(**kwargs)
-        self.allowed = allowed
-
-    def validate(self, value):
-        # Convert short-form multiple selections to list, e.g. 'DE+FR'
-        if isinstance(value, str) and "+" in value:
-            value = value.split("+")
-        # Single code as str
-        if isinstance(value, str):
-            if not value in self.allowed:
-                raise ValueError(
-                    "%s=%s is not one of the allowed values: %s"
-                    % (self.name, value, ",".join(map(str, self.allowed)))
-                )
-        # So value must be an  iterable  of str, e.g. multiple selection
-        elif not all(c in self.allowed for c in value):
-            not_allowed = [c for c in value if not c in self.allowed]
-            raise ValueError(
-                "%s=%s is not one of the allowed values: %s"
-                % (self.name, not_allowed, ",".join(map(str, self.allowed)))
-            )
-        return value
-
-
+    pass
+    
+    
 class SDMXDataflows(Catalog):
     """
      catalog of dataflows for a given SDMX source
@@ -212,16 +155,16 @@ class SDMXDataflows(Catalog):
                     )
                 else:
                     codes_iter = lr.enumerated.items.values()
-                codes = PowerSet(list(chain(*((c.id, str(c.name)) for c in codes_iter))))
+                codes = list(chain(*((c.id, str(c.name)) for c in codes_iter)))
 
                 # allow "" to indicate wild-carded dimension
                 codes.append(NOT_SPECIFIED)
-                p = UserParameter(
+                p = SDMXCodeParam(
                     name=dim.id,
                     description=str(ci.name),
-                    type="str",
+                    type="mlist",
                     allowed=codes,
-                    default=NOT_SPECIFIED,
+                    default=[NOT_SPECIFIED],
                 )
                 params.append(p)
         # Try to retrieve ID of time and freq dimensions for DataFrame index

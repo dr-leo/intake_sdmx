@@ -23,7 +23,7 @@ Development status
 As of June 2021, most intended core features have been implemented, if hardly tested.
 
 Implemented features:
-=================
+=========================
 
 * catalog of SDMX data sources opened and populated correctly
   from data sources supported by pandaSDMX
@@ -34,10 +34,10 @@ Implemented features:
   metadata (= DataStructureDefinition, CodeLIsts etc.) are 
   downloaded only when
   instantiating a data source for a particular Dataflow.
-Each dataflow occurs twice in the list: first under its dataflow_id (eg. 'EXR'),
-second, under its human-readable description (eg. 'Exchange Rates'). However, accessing
-a dataflow by its description, will return the same
-instance as when accessed by ID.  
+  Each dataflow occurs twice in the list: first under its dataflow_id (eg. 'EXR'),
+  second, under its human-readable description (eg. 'Exchange Rates'). However, accessing
+  a dataflow by its description, will return the same
+  instance as when accessed by ID.  
 * Dataflows catalog has a search(words) method which returns
   a catalog of entries where at least one of the wordsoccur in the dataflow's human-readable
   description. 
