@@ -158,13 +158,13 @@ class SDMXDataflows(Catalog):
                 codes = list(chain(*((c.id, str(c.name)) for c in codes_iter)))
 
                 # allow "" to indicate wild-carded dimension
-                codes.append(NOT_SPECIFIED)
+                codes.append("")
                 p = SDMXCodeParam(
                     name=dim.id,
                     description=str(ci.name),
                     type="mlist",
                     allowed=codes,
-                    default=[NOT_SPECIFIED],
+                    default=codes[:1],
                 )
                 params.append(p)
         # Try to retrieve ID of time and freq dimensions for DataFrame index
@@ -173,7 +173,7 @@ class SDMXDataflows(Catalog):
             time_dim_id = dim_candidates[0]
         except IndexError:
             time_dim_id = NOT_SPECIFIED
-        # Ffrequency for period index generation
+        # Frequency for period index generation
         dim_candidates = [p.name for p in params if "FREQ" in p.name]
         try:
             freq_dim_id = dim_candidates[0]
@@ -186,11 +186,11 @@ class SDMXDataflows(Catalog):
                 UserParameter(
                     name="startPeriod",
                     description="startPeriod",
-                    type="datetime",
+                    type="str",
                     default=str(year - 1),
                 ),
                 UserParameter(
-                    name="endPeriod", description="endPeriod", type="datetime"
+                    name="endPeriod", description="endPeriod", type="str"
                 ),
                 UserParameter(
                     name="dtype",
@@ -300,7 +300,7 @@ class SDMXData(intake.source.base.DataSource):
         )
         key = {i: self.kwargs[i] for i in key_ids if self.kwargs[i]}
         # params for request. Currently, only start- and endPeriod are supported
-        params = {k: str(self.kwargs[k].year) for k in ["startPeriod", "endPeriod"]}
+        params = {k: self.kwargs[k] for k in ["startPeriod", "endPeriod"]}
         # remove endPeriod if it is prior to startPeriod (which is the default)
         if params["endPeriod"] < params["startPeriod"]:
             del params["endPeriod"]
