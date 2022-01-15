@@ -13,7 +13,7 @@ from itertools import chain
 __version__ = "0.1.0"
 
 
-NOT_SPECIFIED = "n/a"
+NOT_SPECIFIED = "*"
   
 class LazyDict(MutableMapping):
     def __init__(self, func, *args, **kwargs):
@@ -190,7 +190,10 @@ class SDMXDataflows(Catalog):
                     default=str(year - 1),
                 ),
                 UserParameter(
-                    name="endPeriod", description="endPeriod", type="datetime"
+                    name="endPeriod", 
+                    description="endPeriod", 
+                    type="datetime",
+                    default=str(year),                    
                 ),
                 UserParameter(
                     name="dtype",
@@ -198,6 +201,7 @@ class SDMXDataflows(Catalog):
                         for      allowed values. 
                         Default is '' which translates to 'float64'.""",
                     type="str",
+                    default=""
                 ),
                 UserParameter(
                     name="attributes",
@@ -298,7 +302,8 @@ class SDMXData(intake.source.base.DataSource):
         key_ids = (
             p.name for p in self.entry._user_parameters if isinstance(p, SDMXCodeParam)
         )
-        key = {i: self.kwargs[i] for i in key_ids if self.kwargs[i]}
+        key = {i: self.kwargs[i] for i in key_ids 
+            if self.kwargs[i] != [NOT_SPECIFIED]}
         # params for request. Currently, only start- and endPeriod are supported
         params = {k: str(self.kwargs[k].year) for k in ["startPeriod", "endPeriod"]}
         # remove endPeriod if it is prior to startPeriod (which is the default)
