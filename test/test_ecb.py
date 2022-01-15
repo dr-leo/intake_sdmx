@@ -48,19 +48,15 @@ def test_exr(exr, ecb):
     assert exr.name == "EXR"
     assert exr.description == "Exchange Rates"
     # check default values
-    assert exr.kwargs["FREQ"] == "n/a"
+    assert exr.kwargs["FREQ"] == ["*"]
     # new instance with valid arg
-    exr2 = exr(FREQ="A")
-    assert exr2.kwargs["FREQ"] == "A"
+    exr2 = exr(FREQ=["A"], CURRENCY=["USD", "JPY"])
+    assert exr2.kwargs["FREQ"] == ["A"]
+    assert exr2.kwargs["CURRENCY"] == ["USD", "JPY"]
     # new instance with invalid arg
     with pytest.raises(ValueError):
-        exr3 = exr(FREQ="invalid")
+        exr3 = exr(FREQ=["X"], CURRENCY=["USD", "JPY"])
 
-# This does not work yet as the 'A#B' form fails coersion as it is not a list
-def test_exr_many_codes(exr, ecb):
-    cur_str = 'JPY+USD+CHF'
-    exr2=exr(CURRENCY=cur_str)
-    assert exr2.kwargs['CURRENCY'] == cur_str  
 
 @pytest.fixture
 def exr_data(exr, mocker):
