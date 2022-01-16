@@ -1,4 +1,4 @@
-Statistical Data and Metadata eXchange (SDMX) for the  Python data  ecosystem
+Statistical Data and Metadata eXchange (SDMX) for the  intake  ecosystem
 ********************************************************************************
 
 :mod:`intake_sdmx` is an Apache 2.0-licensed plugin 
@@ -9,7 +9,7 @@ for `intake <https://intake.readthedocs.io>`_. It leverages
 :mod:`intake_sdmx` can be used to:
 
 - explore the dataflows  from about 20 :doc:`data providers <sources>` such as the World Bank, BIS, ILO, ECB,  
-  Eurostat, OECD, UNICEF and United Nations through the intake API and GUI;
+  Eurostat,  UNICEF and United Nations through the intake API and GUI;
 - export data sets as pandas Series or DataFrame
 - expose virtually all pandaSDMX features through the convenient intake API 
 - store and distribute metadata packages on   data sets  as declarative YAML or conda packages  
@@ -27,17 +27,15 @@ you can get :mod:`intake_sdmx` either   by typing from the  command prompt::
 
 or from a `conda environment <https://www.anaconda.com/>`_::
 
-    $ conda install intake_sdmx -c conda-forge     
+    $ conda install intake_sdmx -c intake     
 
-Next, look at a
-:doc:`usage example in only 10 lines of code <example>`. Then dive into the longer, narrative :doc:`tutorial <tutorial>` and finally peruse   the more advanced chapters as needed.
+Next, look at the narrative :doc:`tutorial <tutorial>` and finally peruse   the more advanced chapters as needed.
 
 .. toctree::
    :maxdepth: 1
 
-   example
    tutorial
-
+   whatsnew
 
 :mod:`intake_sdmx` user guide
 ===========================
@@ -48,7 +46,6 @@ Next, look at a
    tutorial
    api
    whatsnew
-   roadmap
    license
 
 
