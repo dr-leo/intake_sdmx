@@ -10,7 +10,7 @@ from collections.abc import MutableMapping, MutableSequence
 from datetime import date
 from itertools import chain
 
-__version__ = "0.2.0"
+__version__ = "0.2.0dev"
 
 
 NOT_SPECIFIED = "*"
