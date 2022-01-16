@@ -48,13 +48,14 @@ def test_exr(exr, ecb):
     assert exr.name == "EXR"
     assert exr.description == "Exchange Rates"
     # check default values
-    assert exr.kwargs["FREQ"] == "n/a"
+    assert exr.kwargs["FREQ"] == ["*"]
     # new instance with valid arg
-    exr2 = exr(FREQ="A")
-    assert exr2.kwargs["FREQ"] == "A"
+    exr2 = exr(FREQ=["A"], CURRENCY=["USD", "JPY"])
+    assert exr2.kwargs["FREQ"] == ["A"]
+    assert exr2.kwargs["CURRENCY"] == ["USD", "JPY"]
     # new instance with invalid arg
     with pytest.raises(ValueError):
-        exr3 = exr(FREQ="invalid")
+        exr3 = exr(FREQ=["X"], CURRENCY=["USD", "JPY"])
 
 
 @pytest.fixture

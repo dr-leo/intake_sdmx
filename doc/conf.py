@@ -8,11 +8,10 @@ import intake_sdmx
 from datetime import datetime
 
 
-
 # -- Project information -----------------------------------------------------
 
 project = "intake_SDMX"
-copyright = f"2014–{str(datetime.now().year)} intake_SDMX developers"
+copyright = f"2020–{str(datetime.now().year)} intake_SDMX developers"
 # The major project version, used as the replacement for |version|.
 version = intake_sdmx.__version__[:3]
 # The full project version, used as the replacement for |release|.

@@ -11,6 +11,7 @@ __pycache__/
 build/
 develop-eggs/
 dist/
+doc/_build/
 downloads/
 eggs/
 .eggs/
@@ -42,7 +43,6 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
-nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/

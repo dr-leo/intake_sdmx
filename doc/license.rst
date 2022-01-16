@@ -1,7 +1,7 @@
 License
 =======
 
-Copyright 2014–2020, pandaSDMX developers:
+Copyright 200–2021, intake_sdmx developers:
 
 .. include:: ../AUTHORS
 

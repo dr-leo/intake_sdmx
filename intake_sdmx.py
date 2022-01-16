@@ -6,17 +6,21 @@ from intake.catalog import Catalog
 from intake.catalog.utils import reload_on_change
 from intake.catalog.local import LocalCatalogEntry, UserParameter
 import pandasdmx as sdmx
-from collections.abc import MutableMapping
+from collections.abc import MutableMapping, MutableSequence
 from datetime import date
 from itertools import chain
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 
-NOT_SPECIFIED = "n/a"
+NOT_SPECIFIED = "*"
 
 
 class LazyDict(MutableMapping):
+    """
+    A dict-like type whose values are computed on first access by calling abcfactory function to be passed to __init__.
+    """
+
     def __init__(self, func, *args, **kwargs):
         super().__init__()
         self._dict = dict(*args, **kwargs)
@@ -61,6 +65,7 @@ class SDMXSources(Catalog):
     container = "catalog"
 
     def _load(self):
+        self.name = "SDMX data sources"
         # exclude sources which do not support dataflows
         # and datasets (eg json-based ABS and OECD)
         excluded = ["ABS", "OECD", "IMF", "SGR", "STAT_EE"]
@@ -88,29 +93,12 @@ class SDMXSources(Catalog):
 
 
 class SDMXCodeParam(UserParameter):
-    def __init__(self, allowed=None, **kwargs):
-        super(SDMXCodeParam, self).__init__(**kwargs)
-        self.allowed = allowed
+    """
+    Helper class to distinguish coded dimensions from other parameters.
+    It could be used in future versions to add custom validation / coercion logic.
+    """
 
-    def validate(self, value):
-        # Convert short-form multiple selections to list, e.g. 'DE+FR'
-        if isinstance(value, str) and "+" in value:
-            value = value.split("+")
-        # Single code as str
-        if isinstance(value, str):
-            if not value in self.allowed:
-                raise ValueError(
-                    "%s=%s is not one of the allowed values: %s"
-                    % (self.name, value, ",".join(map(str, self.allowed)))
-                )
-        # So value must be an  iterable  of str, e.g. multiple selection
-        elif not all(c in self.allowed for c in value):
-            not_allowed = [c for c in value if not c in self.allowed]
-            raise ValueError(
-                "%s=%s is not one of the allowed values: %s"
-                % (self.name, not_allowed, ",".join(map(str, self.allowed)))
-            )
-        return value
+    pass
 
 
 class SDMXDataflows(Catalog):
@@ -143,6 +131,9 @@ class SDMXDataflows(Catalog):
             self.name2id[flow_name] = flow_id
 
     def _make_dataflow_entry(self, flow_id):
+        """
+        Factory for dataflow catalog entries. Passed to :class:`LazyDict`
+        """
         # if flow_id is actually its name, get the real id
         if flow_id in self.name2id:
             flow_id = self.name2id[flow_id]
@@ -151,6 +142,7 @@ class SDMXDataflows(Catalog):
         flow = flow_msg.dataflow[flow_id]
         dsd = flow.structure
         descr = str(flow.name)
+        # generate metadata for new catalog entry
         metadata = self.metadata.copy()
         metadata["dataflow_id"] = flow_id
         metadata["structure_id"] = dsd.id
@@ -178,19 +170,20 @@ class SDMXDataflows(Catalog):
                     )
                 else:
                     codes_iter = lr.enumerated.items.values()
-                codes = {*chain(*((c.id, str(c.name)) for c in codes_iter))}
+                codes = list(chain(*((c.id, str(c.name)) for c in codes_iter)))
 
                 # allow "" to indicate wild-carded dimension
-                codes.add(NOT_SPECIFIED)
-                p = UserParameter(
+                codes.append(NOT_SPECIFIED)
+                p = SDMXCodeParam(
                     name=dim.id,
                     description=str(ci.name),
-                    type="str",
+                    type="mlist",
                     allowed=codes,
-                    default=NOT_SPECIFIED,
+                    default=[NOT_SPECIFIED],
                 )
                 params.append(p)
-        # Try to retrieve ID of time and freq dimensions for DataFrame index
+        # Try to retrieve ID of time and freq dimensions for DataFrame index generation.
+        # From these dimensions we generate sensible defaults for pandasdmx.writer config.
         dim_candidates = [d.id for d in dsd.dimensions if "TIME" in d.id]
         try:
             time_dim_id = dim_candidates[0]
@@ -210,10 +203,13 @@ class SDMXDataflows(Catalog):
                     name="startPeriod",
                     description="startPeriod",
                     type="datetime",
-                    default=str(year - 1),
+                    default=str(year - 2),
                 ),
                 UserParameter(
-                    name="endPeriod", description="endPeriod", type="datetime"
+                    name="endPeriod",
+                    description="endPeriod",
+                    type="datetime",
+                    default=str(year - 1),
                 ),
                 UserParameter(
                     name="dtype",
@@ -221,6 +217,7 @@ class SDMXDataflows(Catalog):
                         for      allowed values. 
                         Default is '' which translates to 'float64'.""",
                     type="str",
+                    default="",
                 ),
                 UserParameter(
                     name="attributes",
@@ -253,6 +250,7 @@ class SDMXDataflows(Catalog):
                 ),
             ]
         )
+        #  jinja2 template for args specification. See intake user guide
         args = {p.name: f"{{{{{p.name}}}}}" for p in params}
         args["storage_options"] = self.storage_options
         return LocalCatalogEntry(
@@ -272,6 +270,15 @@ class SDMXDataflows(Catalog):
 
     @reload_on_change
     def search(self, text):
+        """
+        Make subcatalog of entries whose name contains any word from `text`.
+        
+        Parameters:
+        
+            text[str] : space-separated words
+        
+        Return: :instance:`SDMXDataflows` 
+        """
         words = text.lower().split()
         cat = SDMXDataflows(
             name=self.name + "_search",
@@ -292,16 +299,15 @@ class SDMXDataflows(Catalog):
                 if any(word in k.lower() for word in words)
             )
         ]
+        cat._entries.clear()
         cat._entries.update({k: None for k in keys})
         return cat
-
-    def filter(self, func):
-        raise NotImplemented
 
 
 class SDMXData(intake.source.base.DataSource):
     """
-    Driver for SDMX data sets of  a given SDMX dataflow
+    Driver for SDMX data sets of  a given SDMX dataflow.
+    Its parameters largely follows  the :class:pandasdmx.Request API.
     """
 
     version = __version__
@@ -316,24 +322,30 @@ class SDMXData(intake.source.base.DataSource):
         self.kwargs = kwargs
 
     def read(self):
-        # construct key
+        """
+        Request dataset from SDMX data source 
+        via HTTP, 
+        and convert it to a pandas Series or DataFrame using pandasdmx. The return typedepends on the kwargs passed on instance creation.
+"""
+        # construct key for selection of rows and columns. See pandasdmx docs for details.
         key_ids = (
             p.name for p in self.entry._user_parameters if isinstance(p, SDMXCodeParam)
         )
-        key = {i: self.kwargs[i] for i in key_ids if self.kwargs[i]}
+        key = {i: self.kwargs[i] for i in key_ids if self.kwargs[i] != [NOT_SPECIFIED]}
         # params for request. Currently, only start- and endPeriod are supported
         params = {k: str(self.kwargs[k].year) for k in ["startPeriod", "endPeriod"]}
-        # remove endPeriod if it is prior to startPeriod (which is the default)
+        # remove endPeriod if it is prior to startPeriod ()
         if params["endPeriod"] < params["startPeriod"]:
             del params["endPeriod"]
         # Now request the data via HTTP
-        # TODO: handle   Request.get kwargs eg. fromfile, timeout.
+        # TODO: handle   optional Request.get kwargs eg. fromfile, timeout.
         data_msg = self.req.data(self.metadata["dataflow_id"], key=key, params=params)
         # get writer config.
         # Capture only non-empty values as these will be filled by the writer
         writer_config = {
             k: self.kwargs[k] for k in ["dtype", "attributes"] if self.kwargs[k]
         }
+        # kwargs to customize DataFrame/Series  index generation.
         # construct  args   to conform to writer API
         index_type = self.kwargs["index_type"]
         freq_dim = self.kwargs["freq_dim"]
