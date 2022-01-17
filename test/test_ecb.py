@@ -26,15 +26,20 @@ def ecb(source, mocker):
 
 
 @pytest.fixture
-def exr(ecb, mocker):
-    mocker.patch.object(
+def mock_exr(ecb, mocker):
+    return mocker.patch.object(
         Request, "get", return_value=read_sdmx(filepath("exr_flow.xml"))
     )
+
+
+@pytest.fixture
+def exr(ecb, mock_exr):
     return ecb.EXR
-
-
+    
+    
 def test_source(source):
     assert isinstance(source, intake_sdmx.SDMXSources)
+    assert "ECB" in source
 
 
 def test_ecb(ecb):
@@ -43,7 +48,7 @@ def test_ecb(ecb):
     assert "Exchange Rates" in ecb
 
 
-def test_exr(exr, ecb):
+def test_exr(exr):
     assert isinstance(exr, intake_sdmx.SDMXData)
     assert exr.name == "EXR"
     assert exr.description == "Exchange Rates"
@@ -57,7 +62,12 @@ def test_exr(exr, ecb):
     with pytest.raises(ValueError):
         exr3 = exr(FREQ=["X"], CURRENCY=["USD", "JPY"])
 
+def test_exr_by_name(ecb, mock_exr):
+    exr4 = ecb["Exchange Rates"]
+    assert isinstance(exr4, intake_sdmx.SDMXData)
+    assert exr4.name == "EXR"
 
+    
 @pytest.fixture
 def dsd(exr):
     flow_id = exr.metadata["dataflow_id"]
