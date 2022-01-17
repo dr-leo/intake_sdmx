@@ -94,11 +94,26 @@ class SDMXSources(Catalog):
 
 class SDMXCodeParam(UserParameter):
     """
-    Helper class to distinguish coded dimensions from other parameters.
-    It could be used in future versions to add custom validation / coercion logic.
+    Helper class to distinguish coded dimensions from other parameters
+    and to perform additional validation. .
     """
 
-    pass
+    def validate(self, value):
+        value = super().validate(value)
+        # additional validations
+        if value != self.default:
+            # replace names by corresponding codes, eg. "US dollar" by "USD"
+            for i in range(len(value)):
+                # Does item have an odd index within self.allowed? Then it is a name.
+                p = self.allowed.index(value[i])                
+                if p % 2:
+                    # replace it with its predecessor
+                    value[i] = self.allowed[p-1]
+        # Check for duplicates
+        assert len(value) == len(set(value)), ValueError(
+                f"Duplicate codes are not allowed: {value}")
+        return value
+        
 
 
 class SDMXDataflows(Catalog):
