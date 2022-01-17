@@ -55,7 +55,7 @@ class LazyDict(MutableMapping):
 
 class SDMXSources(Catalog):
     """
-     catalog of SDMX data sources, a.k.a. agencies 
+     catalog of SDMX data sources, a.k.a. agencies
     supported by pandaSDMX
     """
 
@@ -105,20 +105,24 @@ class SDMXCodeParam(UserParameter):
             # replace names by corresponding codes, eg. "US dollar" by "USD"
             for i in range(len(value)):
                 # Does item have an odd index within self.allowed? Then it is a name.
-                p = self.allowed.index(value[i])                
+                p = self.allowed.index(value[i])
                 if p % 2:
                     # replace it with its predecessor
-                    value[i] = self.allowed[p-1]
-        # Check for duplicates
-        assert len(value) == len(set(value)), ValueError(
-                f"Duplicate codes are not allowed: {value}")
+                    value[i] = self.allowed[p - 1]
+            # Check for duplicates
+            assert len(value) == len(
+                set(value)
+            ), f"Duplicate codes are not allowed: {value}"
+            # Don't use "*" with regular  codes
+            assert (
+                len(value) == 1 or "*" not in value
+            ), f"Using '*' alongside regular codes is ambiguous: {value}"
         return value
-        
 
 
 class SDMXDataflows(Catalog):
     """
-     catalog of dataflows for a given SDMX source
+    catalog of dataflows for a given SDMX source
     """
 
     version = __version__
@@ -228,17 +232,17 @@ class SDMXDataflows(Catalog):
                 ),
                 UserParameter(
                     name="dtype",
-                    description="""data type for pandas.DataFrame. See pandas docs 
-                        for      allowed values. 
+                    description="""data type for pandas.DataFrame. See pandas docs
+                        for      allowed values.
                         Default is '' which translates to 'float64'.""",
                     type="str",
                     default="",
                 ),
                 UserParameter(
                     name="attributes",
-                    description="""Include any attributes alongside observations 
+                    description="""Include any attributes alongside observations
                     in the DataFrame. See pandasdmx docx for details.
-                    Examples: 'osgd' for all attributes, or 
+                    Examples: 'osgd' for all attributes, or
                     'os': only attributes at observation and series level.""",
                     type="str",
                 ),
@@ -251,14 +255,14 @@ class SDMXDataflows(Catalog):
                 ),
                 UserParameter(
                     name="freq_dim",
-                    description="""To generate PeriodIndex (index_type='period') 
+                    description="""To generate PeriodIndex (index_type='period')
                     Default is set based on heuristics.""",
                     type="str",
                     default=freq_dim_id,
                 ),
                 UserParameter(
                     name="time_dim",
-                    description="""To generate datetime or period index. 
+                    description="""To generate datetime or period index.
                         Ignored if index_type='object'.""",
                     type="str",
                     default=time_dim_id,
@@ -287,12 +291,12 @@ class SDMXDataflows(Catalog):
     def search(self, text):
         """
         Make subcatalog of entries whose name contains any word from `text`.
-        
+
         Parameters:
-        
+
             text[str] : space-separated words
-        
-        Return: :instance:`SDMXDataflows` 
+
+        Return: :instance:`SDMXDataflows`
         """
         words = text.lower().split()
         cat = SDMXDataflows(
@@ -338,8 +342,8 @@ class SDMXData(intake.source.base.DataSource):
 
     def read(self):
         """
-        Request dataset from SDMX data source 
-        via HTTP, 
+        Request dataset from SDMX data source
+        via HTTP,
         and convert it to a pandas Series or DataFrame using pandasdmx. The return typedepends on the kwargs passed on instance creation.
 """
         # construct key for selection of rows and columns. See pandasdmx docs for details.
