@@ -12,6 +12,8 @@ from itertools import chain
 
 __version__ = "0.2.0dev"
 
+__all__ = ["SDMXSources", "SDMXDataflows", "SDMXData"]
+
 
 NOT_SPECIFIED = "*"
 
@@ -110,13 +112,12 @@ class SDMXCodeParam(UserParameter):
                     # replace it with its predecessor
                     value[i] = self.allowed[p - 1]
             # Check for duplicates
-            assert len(value) == len(
-                set(value)
-            ), f"Duplicate codes are not allowed: {value}"
+            if len(value) > len(set(value)):
+                raise ValueError(f"Duplicate codes are not allowed: {value}")
             # Don't use "*" with regular  codes
-            assert (
-                len(value) == 1 or "*" not in value
-            ), f"Using '*' alongside regular codes is ambiguous: {value}"
+            if len(value) > 1 and "*" in value:
+                raise ValueError(
+                    f"Using '*' alongside regular codes is ambiguous: {value}")
         return value
 
 

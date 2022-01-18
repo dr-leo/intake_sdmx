@@ -100,7 +100,7 @@ def test_params(exr, mock_get):
     msg = exr(CURRENCY=["US dollar", "Japanese yen"]).read()
     assert mock_get.call_args[1]["key"] == cur_key
     # Duplicate values raise error
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         msg = exr(CURRENCY=["US dollar", "USD"]).read()
 
 
