@@ -61,18 +61,19 @@ class SDMXSources(Catalog):
     supported by pandaSDMX
     """
 
-    name = "sdmx"
-    description = "SDMX sources supported by pandaSDMX"
     version = __version__
     container = "catalog"
 
     def _load(self):
         self.name = "SDMX data sources"
-        # exclude sources which do not support dataflows
-        # and datasets (eg json-based ABS and OECD)
-        excluded = ["ABS", "OECD", "IMF", "SGR", "STAT_EE"]
+        self.    description = "SDMX data sources (a.k.a. agencies / data providers)\
+        supported by pandaSDMX"
+        # Add  source entries which do not support dataflows
         for source_id, source in sdmx.source.sources.items():
-            if source_id not in excluded:
+            # Take only sources which support dataflow. 
+            # This excludes json-based sources
+            # souch as OECD and ABS as these only allow data queries, not metadata
+            if source.supports['dataflow']:
                 descr = source.name
                 metadata = {"source_id": source_id}
                 e = LocalCatalogEntry(
@@ -92,6 +93,9 @@ class SDMXSources(Catalog):
                     catalog=self,
                 )
                 self._entries[source_id] = e
+                # add same entry under its name for clarity
+                self._entries[descr] = e
+                
 
 
 class SDMXCodeParam(UserParameter):
