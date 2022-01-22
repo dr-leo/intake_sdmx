@@ -10,11 +10,11 @@ data_path = Path(__file__).parent.joinpath("data")
 
 def filepath(name):
     return data_path.joinpath(name)
-
+    
 
 @pytest.fixture
 def source():
-    return intake.open_sdmx()
+    return intake.open_sdmx_sources()
 
 
 @pytest.fixture
@@ -110,3 +110,13 @@ def test_search(ecb):
     assert l[0] == "EXR"
     assert l[1] == "Exchange Rates"
     assert len(l) == 4
+
+
+
+def test_entry_points(mock_exr):
+    src = intake.open_sdmx_sources()
+    assert isinstance(src, intake_sdmx.SDMXSources)
+    src2 = intake_sdmx.SDMXSources()
+    assert src.yaml() == src2.yaml()
+    # writing such tests for other drivers would be more tedious.
+    

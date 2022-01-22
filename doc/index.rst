@@ -29,28 +29,29 @@ or from a `conda environment <https://www.anaconda.com/>`_::
 
     $ conda install intake_sdmx -c intake     
 
-Next, look at the narrative :doc:`tutorial <tutorial>` and finally peruse   the more advanced chapters as needed.
+Next, look at the narrative :doc:`user guide <user_guide>` and skim
+through the documentation of **intake** and/or **pandaSDMX** as needed.
 
 .. toctree::
    :maxdepth: 1
 
-   tutorial
+   user_guide
    whatsnew
 
 :mod:`intake_sdmx` user guide
-===========================
+=================================
 
 .. toctree::
    :maxdepth: 2
 
-   tutorial
+   user_guide
    api
    whatsnew
    license
 
 
 Contributing to intake_sdmx and getting help
-==========================================
+=================================================
 
 - Report bugs, suggest features or view the source code on
   `GitHub <https://github.com/dr-leo/intake_sdmx>`_.

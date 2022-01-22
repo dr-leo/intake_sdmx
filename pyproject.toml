@@ -11,7 +11,7 @@ dist-name = "intake_sdmx"
 description-file = "README.rst"
 requires = [
     "pandasdmx[cache] >= 1.7.0",
-    "intake >= 0.6.4"]
+    "intake >= 0.6.5"]
 requires-python = ">=3.7.8,<4"
 keywords = "statistics, SDMX, intake, data, economics, science, plot"
 classifiers = [
@@ -35,7 +35,7 @@ doc = ["sphinx >= 3.4",
 test = ["pytest >= 5"] 
 
 [tool.flit.entrypoints."intake.drivers"]  
-sdmx = "intake_sdmx:SDMXSources"
+sdmx_sources = "intake_sdmx:SDMXSources"
 sdmx_dataflows = "intake_sdmx:SDMXDataflows"
 sdmx_data = "intake_sdmx:SDMXData" 
 

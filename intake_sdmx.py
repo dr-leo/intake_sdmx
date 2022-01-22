@@ -14,7 +14,7 @@ __version__ = "0.2.0dev"
 
 __all__ = ["SDMXSources", "SDMXDataflows", "SDMXData"]
 
-
+# indicate wildcarded dimensions for data reads
 NOT_SPECIFIED = "*"
 
 
@@ -61,8 +61,10 @@ class SDMXSources(Catalog):
     supported by pandaSDMX
     """
 
-    version = __version__
+    version = __version__ # why does version not ocur in the yaml?
     container = "catalog"
+    # I thought to set `name`here as well. But it is ignored.
+    # so set it as instance attribute below.
 
     def _load(self):
         self.name = "SDMX data sources"
@@ -293,16 +295,20 @@ class SDMXDataflows(Catalog):
         )
 
     @reload_on_change
-    def search(self, text):
+    def search(self, text, operator="|"):
         """
         Make subcatalog of entries whose name contains any word from `text`.
 
         Parameters:
 
             text[str] : space-separated words
+            operator[str[: either "&" or "|" meaning AND or OR
 
         Return: :instance:`SDMXDataflows`
         """
+        if operator not in ["&", "|"]:
+            raise ValueError(f"Operator must be one of '&' or '|'. {operator} given.")
+        func = all if operator == "&" else any
         words = text.lower().split()
         cat = SDMXDataflows(
             name=self.name + "_search",
@@ -319,8 +325,8 @@ class SDMXDataflows(Catalog):
         keys = [
             *chain.from_iterable(
                 (self.name2id[k], k)
-                for k in self
-                if any(word in k.lower() for word in words)
+                for k in self.name2id
+                if func(word in k.lower() for word in words)
             )
         ]
         cat._entries.clear()
