@@ -1,14 +1,15 @@
 """intake plugin for SDMX data sources"""
 
 
-import intake
-from intake.catalog import Catalog
-from intake.catalog.utils import reload_on_change
-from intake.catalog.local import LocalCatalogEntry, UserParameter
-import pandasdmx as sdmx
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import MutableMapping
 from datetime import date
 from itertools import chain
+
+import intake
+import pandasdmx as sdmx
+from intake.catalog import Catalog
+from intake.catalog.local import LocalCatalogEntry, UserParameter
+from intake.catalog.utils import reload_on_change
 
 __version__ = "0.2.0dev"
 
@@ -61,21 +62,21 @@ class SDMXSources(Catalog):
     supported by pandaSDMX
     """
 
-    version = __version__ # why does version not ocur in the yaml?
+    version = __version__  # why does version not ocur in the yaml?
     container = "catalog"
     # I thought to set `name`here as well. But it is ignored.
     # so set it as instance attribute below.
 
     def _load(self):
         self.name = "SDMX data sources"
-        self.    description = "SDMX data sources (a.k.a. agencies / data providers)\
+        self.description = "SDMX data sources (a.k.a. agencies / data providers)\
         supported by pandaSDMX"
         # Add  source entries which do not support dataflows
         for source_id, source in sdmx.source.sources.items():
-            # Take only sources which support dataflow. 
+            # Take only sources which support dataflow.
             # This excludes json-based sources
             # souch as OECD and ABS as these only allow data queries, not metadata
-            if source.supports['dataflow']:
+            if source.supports["dataflow"]:
                 descr = source.name
                 metadata = {"source_id": source_id}
                 e = LocalCatalogEntry(
@@ -97,7 +98,6 @@ class SDMXSources(Catalog):
                 self._entries[source_id] = e
                 # add same entry under its name for clarity
                 self._entries[descr] = e
-                
 
 
 class SDMXCodeParam(UserParameter):
@@ -123,7 +123,8 @@ class SDMXCodeParam(UserParameter):
             # Don't use "*" with regular  codes
             if len(value) > 1 and "*" in value:
                 raise ValueError(
-                    f"Using '*' alongside regular codes is ambiguous: {value}")
+                    f"Using '*' alongside regular codes is ambiguous: {value}"
+                )
         return value
 
 
@@ -166,7 +167,14 @@ class SDMXDataflows(Catalog):
         # Download metadata on specified dataflow
         flow_msg = self.req.dataflow(flow_id)
         flow = flow_msg.dataflow[flow_id]
-        dsd = flow.structure
+        # is the full DSD already in the msg?
+        if flow.structure.is_external_reference:
+            # No. So download it
+            dsd_id = flow.structure.id
+            dsd_msg = self.req.datastructure(dsd_id)
+            dsd = dsd_msg.structure[dsd_id]
+        else:
+            dsd = flow.structure
         descr = str(flow.name)
         # generate metadata for new catalog entry
         metadata = self.metadata.copy()

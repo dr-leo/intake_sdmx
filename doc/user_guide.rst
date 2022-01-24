@@ -141,14 +141,34 @@ user-parameters of a catalog entry for a chosen dataflow. Allowed values ofthese
     # 'une_rt_a' dataflow
     une = unemployment_flows.une_rt_a
     type(une)
-    yml = une.yaml()
-    len(yml)
-    # Something big is coming up...
-    print('\n'.join(yml.splitlines()[20]))
+    print( une.yaml())
     
-    
-    
-    
+Two observations:
+
+* The :inst:`intake_sdmx.SDMXData` knows about the dimensions 
+  of the dataflow on annual unemployment data. 
+  This information has been extracted from the referenced 
+  DatastructureDefinition - a core concept of SDMX.
+* All dimensions are wildcarded ("*"). Thus, if we asked the server
+  to send us the corresponding dataset, we would probably exceed the server limits, 
+  or at least obtain a bunch of data we are not interested in.
+  So let's try to select some interesting columns for our data query. 
+  
+Not only do we have the dimension names. 
+We also have all the allowed codes, namely in the 
+catalog entry "une_rt_a" from which we have created our instance:
+
+.. ipython:: python
+
+        print(str(une.entry))
+        # select some codes
+        une1 = une(GEO=['IE', 'ES', 'EL'], startPeriod="2007")
+        # Note the new config values
+        print(une1.yaml())
+        
+We are now ready to download the actual dataset.        
+        
+        
 downloading datasets
 ===================
 

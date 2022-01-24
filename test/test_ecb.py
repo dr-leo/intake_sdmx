@@ -1,16 +1,18 @@
+from pathlib import Path
+
 import intake
-import intake_sdmx
-from pandasdmx import Request, read_sdmx
 import pandas as pd
 import pytest
-from pathlib import Path
+from pandasdmx import Request, read_sdmx
+
+import intake_sdmx
 
 data_path = Path(__file__).parent.joinpath("data")
 
 
 def filepath(name):
     return data_path.joinpath(name)
-    
+
 
 @pytest.fixture
 def source():
@@ -35,8 +37,8 @@ def mock_exr(ecb, mocker):
 @pytest.fixture
 def exr(ecb, mock_exr):
     return ecb.EXR
-    
-    
+
+
 def test_source(source):
     assert isinstance(source, intake_sdmx.SDMXSources)
     assert "ECB" in source
@@ -62,12 +64,13 @@ def test_exr(exr):
     with pytest.raises(ValueError):
         exr3 = exr(FREQ=["X"], CURRENCY=["USD", "JPY"])
 
+
 def test_exr_by_name(ecb, mock_exr):
     exr4 = ecb["Exchange Rates"]
     assert isinstance(exr4, intake_sdmx.SDMXData)
     assert exr4.name == "EXR"
 
-    
+
 @pytest.fixture
 def dsd(exr):
     flow_id = exr.metadata["dataflow_id"]
@@ -112,11 +115,9 @@ def test_search(ecb):
     assert len(l) == 4
 
 
-
 def test_entry_points(mock_exr):
     src = intake.open_sdmx_sources()
     assert isinstance(src, intake_sdmx.SDMXSources)
     src2 = intake_sdmx.SDMXSources()
     assert src.yaml() == src2.yaml()
     # writing such tests for other drivers would be more tedious.
-    
