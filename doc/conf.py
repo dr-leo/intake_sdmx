@@ -4,9 +4,9 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import intake_sdmx
 from datetime import datetime
 
+import intake_sdmx
 
 # -- Project information -----------------------------------------------------
 

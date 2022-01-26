@@ -1,18 +1,21 @@
 """intake plugin for SDMX data sources"""
 
 
-import intake
-from intake.catalog import Catalog
-from intake.catalog.utils import reload_on_change
-from intake.catalog.local import LocalCatalogEntry, UserParameter
-import pandasdmx as sdmx
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import MutableMapping
 from datetime import date
 from itertools import chain
 
+import intake
+import pandasdmx as sdmx
+from intake.catalog import Catalog
+from intake.catalog.local import LocalCatalogEntry, UserParameter
+from intake.catalog.utils import reload_on_change
+
 __version__ = "0.2.0"
 
+__all__ = ["SDMXSources", "SDMXDataflows", "SDMXData"]
 
+# indicate wildcarded dimensions for data reads
 NOT_SPECIFIED = "*"
 
 
@@ -55,22 +58,25 @@ class LazyDict(MutableMapping):
 
 class SDMXSources(Catalog):
     """
-     catalog of SDMX data sources, a.k.a. agencies 
+     catalog of SDMX data sources, a.k.a. agencies
     supported by pandaSDMX
     """
 
-    name = "sdmx"
-    description = "SDMX sources supported by pandaSDMX"
-    version = __version__
+    version = __version__  # why does version not ocur in the yaml?
     container = "catalog"
+    # I thought to set `name`here as well. But it is ignored.
+    # so set it as instance attribute below.
 
     def _load(self):
         self.name = "SDMX data sources"
-        # exclude sources which do not support dataflows
-        # and datasets (eg json-based ABS and OECD)
-        excluded = ["ABS", "OECD", "IMF", "SGR", "STAT_EE"]
+        self.description = "SDMX data sources (a.k.a. agencies / data providers)\
+        supported by pandaSDMX"
+        # Add  source entries which do not support dataflows
         for source_id, source in sdmx.source.sources.items():
-            if source_id not in excluded:
+            # Take only sources which support dataflow.
+            # This excludes json-based sources
+            # souch as OECD and ABS as these only allow data queries, not metadata
+            if source.supports["dataflow"]:
                 descr = source.name
                 metadata = {"source_id": source_id}
                 e = LocalCatalogEntry(
@@ -90,20 +96,41 @@ class SDMXSources(Catalog):
                     catalog=self,
                 )
                 self._entries[source_id] = e
+                # add same entry under its name for clarity
+                self._entries[descr] = e
 
 
 class SDMXCodeParam(UserParameter):
     """
-    Helper class to distinguish coded dimensions from other parameters.
-    It could be used in future versions to add custom validation / coercion logic.
+    Helper class to distinguish coded dimensions from other parameters
+    and to perform additional validation. .
     """
 
-    pass
+    def validate(self, value):
+        value = super().validate(value)
+        # additional validations
+        if value != self.default:
+            # replace names by corresponding codes, eg. "US dollar" by "USD"
+            for i in range(len(value)):
+                # Does item have an odd index within self.allowed? Then it is a name.
+                p = self.allowed.index(value[i])
+                if p % 2:
+                    # replace it with its predecessor
+                    value[i] = self.allowed[p - 1]
+            # Check for duplicates
+            if len(value) > len(set(value)):
+                raise ValueError(f"Duplicate codes are not allowed: {value}")
+            # Don't use "*" with regular  codes
+            if len(value) > 1 and "*" in value:
+                raise ValueError(
+                    f"Using '*' alongside regular codes is ambiguous: {value}"
+                )
+        return value
 
 
 class SDMXDataflows(Catalog):
     """
-     catalog of dataflows for a given SDMX source
+    catalog of dataflows for a given SDMX source
     """
 
     version = __version__
@@ -140,7 +167,14 @@ class SDMXDataflows(Catalog):
         # Download metadata on specified dataflow
         flow_msg = self.req.dataflow(flow_id)
         flow = flow_msg.dataflow[flow_id]
-        dsd = flow.structure
+        # is the full DSD already in the msg?
+        if flow.structure.is_external_reference:
+            # No. So download it
+            dsd_id = flow.structure.id
+            dsd_msg = self.req.datastructure(dsd_id)
+            dsd = dsd_msg.structure[dsd_id]
+        else:
+            dsd = flow.structure
         descr = str(flow.name)
         # generate metadata for new catalog entry
         metadata = self.metadata.copy()
@@ -202,28 +236,28 @@ class SDMXDataflows(Catalog):
                 UserParameter(
                     name="startPeriod",
                     description="startPeriod",
-                    type="datetime",
+                    type="str",
                     default=str(year - 2),
                 ),
                 UserParameter(
                     name="endPeriod",
                     description="endPeriod",
-                    type="datetime",
+                    type="str",
                     default=str(year - 1),
                 ),
                 UserParameter(
                     name="dtype",
-                    description="""data type for pandas.DataFrame. See pandas docs 
-                        for      allowed values. 
+                    description="""data type for pandas.DataFrame. See pandas docs
+                        for      allowed values.
                         Default is '' which translates to 'float64'.""",
                     type="str",
                     default="",
                 ),
                 UserParameter(
                     name="attributes",
-                    description="""Include any attributes alongside observations 
+                    description="""Include any attributes alongside observations
                     in the DataFrame. See pandasdmx docx for details.
-                    Examples: 'osgd' for all attributes, or 
+                    Examples: 'osgd' for all attributes, or
                     'os': only attributes at observation and series level.""",
                     type="str",
                 ),
@@ -236,14 +270,14 @@ class SDMXDataflows(Catalog):
                 ),
                 UserParameter(
                     name="freq_dim",
-                    description="""To generate PeriodIndex (index_type='period') 
+                    description="""To generate PeriodIndex (index_type='period')
                     Default is set based on heuristics.""",
                     type="str",
                     default=freq_dim_id,
                 ),
                 UserParameter(
                     name="time_dim",
-                    description="""To generate datetime or period index. 
+                    description="""To generate datetime or period index.
                         Ignored if index_type='object'.""",
                     type="str",
                     default=time_dim_id,
@@ -269,16 +303,20 @@ class SDMXDataflows(Catalog):
         )
 
     @reload_on_change
-    def search(self, text):
+    def search(self, text, operator="|"):
         """
         Make subcatalog of entries whose name contains any word from `text`.
-        
+
         Parameters:
-        
+
             text[str] : space-separated words
-        
-        Return: :instance:`SDMXDataflows` 
+            operator[str[: either "&" or "|" meaning AND or OR
+
+        Return: :instance:`SDMXDataflows`
         """
+        if operator not in ["&", "|"]:
+            raise ValueError(f"Operator must be one of '&' or '|'. {operator} given.")
+        func = all if operator == "&" else any
         words = text.lower().split()
         cat = SDMXDataflows(
             name=self.name + "_search",
@@ -295,8 +333,8 @@ class SDMXDataflows(Catalog):
         keys = [
             *chain.from_iterable(
                 (self.name2id[k], k)
-                for k in self
-                if any(word in k.lower() for word in words)
+                for k in self.name2id
+                if func(word in k.lower() for word in words)
             )
         ]
         cat._entries.clear()
@@ -323,8 +361,8 @@ class SDMXData(intake.source.base.DataSource):
 
     def read(self):
         """
-        Request dataset from SDMX data source 
-        via HTTP, 
+        Request dataset from SDMX data source
+        via HTTP,
         and convert it to a pandas Series or DataFrame using pandasdmx. The return typedepends on the kwargs passed on instance creation.
 """
         # construct key for selection of rows and columns. See pandasdmx docs for details.
