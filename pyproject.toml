@@ -40,7 +40,7 @@ sdmx_dataflows = "intake_sdmx:SDMXDataflows"
 sdmx_data = "intake_sdmx:SDMXData" 
 
 [tool.flit.metadata.urls]
-Documentation = "https://intake_sdmx.readthedocs.io/en/latest/"
+Documentation = "https://intake_sdmx.readthedocs.io/"
 
 [tool.flit.sdist]
 include = ["LICENSE"]

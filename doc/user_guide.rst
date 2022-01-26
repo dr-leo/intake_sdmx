@@ -33,12 +33,9 @@ accessible via  **intake**. To achieve this,
   that can download data-sets of a specified dataflow
   and convert it to a :class:`pandas.DataFrame`.
 
-
 Whether you are familiar with **intake**
 or **pandaSDMX**,
-the above concepts should ring a bell.
-
-However, if you are new to both ecosystems,
+the above concepts should ring a bell. However, if you are new to both ecosystems,
 just read on, follow the code examples,
 and dig deeper as needed by skimming
 the docs of either **intake** or **pandaSDMX** as needed.
@@ -82,6 +79,17 @@ Two observations:
   And dict keys are just fine to show
   human-readable descriptions alongside the IDs.
 
+As in  pandasdmx, you can configure your HTTP connections: 
+
+.. ipython:: python
+
+    src_via_proxy = SDMXSources(
+        storage_options={'proxies': {'http': 'http://1.1.1.1:4567'}})
+
+The `storage_options` argument is an **intake** feature. Options will be propagated to
+any HTTP connection established by instances derived from `src_via_proxy`. Note that upon instantiation of:class:`SDMXSources` no HTTP connection is made.
+        
+        
 Exploring the dataflows of a given data source
 ================================================
 
@@ -125,7 +133,7 @@ Anyway, we choose ùne_rt_a`for further analysis.
 
 
 Exploring the data structure  
-=========================
+==============================
 
 As most pandaSDMX users will know, each dataflow references a data structure definition (DSD). It contains 
 descriptions of dimensions, codelists etc.
@@ -145,7 +153,7 @@ user-parameters of a catalog entry for a chosen dataflow. Allowed values ofthese
     
 Two observations:
 
-* The :inst:`intake_sdmx.SDMXData` knows about the dimensions 
+* The :class:`intake_sdmx.SDMXData` instance knows about the dimensions 
   of the dataflow on annual unemployment data. 
   This information has been extracted from the referenced 
   DatastructureDefinition - a core concept of SDMX.
@@ -161,16 +169,39 @@ catalog entry "une_rt_a" from which we have created our instance:
 .. ipython:: python
 
         print(str(une.entry))
-        # select some codes
-        une1 = une(GEO=['IE', 'ES', 'EL'], startPeriod="2007")
+        # select some countries 
+        # and the startPeriod to restrict our query
+        une = une(GEO=['IE', 'ES', 'EL'], startPeriod="2007")
         # Note the new config values
-        print(une1.yaml())
+        print(une.yaml())
+        # Passed Codes are validated against the codelists:
+        try:
+            invalid = une(FREQ=['XXX']) 
+        except ValueError as e:
+            print(e)
         
-We are now ready to download the actual dataset.        
+Note that when deriving a new instance from an exiting one,
+the entire configuration is propagated, except for those values we overwrite 
+by passing new arguments.
         
-        
-downloading datasets
-===================
+Downloading and analyzing data
+==================================
 
+**intake_sdmx** can export datasets as pandas Series (default) or DataFrames.
+A Series is preferrable, in particular, when you aren't sure 
+about the periodicity of the data, as DataFrames requires columns to have consistent datetime indices. 
+We shall export our annual unemployment data 
+as a DataFrame. To do this, we 
+configure our :class:`intake_sdmx.SDMXData` instance 
+as follows:
+
+.. ipython:: python
+
+    # configure for DataFrame with PeriodIndex
+    une = une(index_type='period')
+    # Now download the dataset and export it as DataFrame:
+    df = une.read()
+    df.loc[:, ('Y15-74', 'PC_ACT', 'T')]
+    
 
     

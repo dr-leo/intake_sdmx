@@ -11,7 +11,7 @@ from intake.catalog import Catalog
 from intake.catalog.local import LocalCatalogEntry, UserParameter
 from intake.catalog.utils import reload_on_change
 
-__version__ = "0.2.0dev"
+__version__ = "0.2.0"
 
 __all__ = ["SDMXSources", "SDMXDataflows", "SDMXData"]
 
@@ -236,13 +236,13 @@ class SDMXDataflows(Catalog):
                 UserParameter(
                     name="startPeriod",
                     description="startPeriod",
-                    type="datetime",
+                    type="str",
                     default=str(year - 2),
                 ),
                 UserParameter(
                     name="endPeriod",
                     description="endPeriod",
-                    type="datetime",
+                    type="str",
                     default=str(year - 1),
                 ),
                 UserParameter(
