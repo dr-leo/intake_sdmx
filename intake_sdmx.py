@@ -11,7 +11,7 @@ from intake.catalog import Catalog
 from intake.catalog.local import LocalCatalogEntry, UserParameter
 from intake.catalog.utils import reload_on_change
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = ["SDMXSources", "SDMXDataflows", "SDMXData"]
 
@@ -371,7 +371,7 @@ class SDMXData(intake.source.base.DataSource):
         )
         key = {i: self.kwargs[i] for i in key_ids if self.kwargs[i] != [NOT_SPECIFIED]}
         # params for request. Currently, only start- and endPeriod are supported
-        params = {k: str(self.kwargs[k].year) for k in ["startPeriod", "endPeriod"]}
+        params = {k: str(self.kwargs[k]) for k in ["startPeriod", "endPeriod"]}
         # remove endPeriod if it is prior to startPeriod ()
         if params["endPeriod"] < params["startPeriod"]:
             del params["endPeriod"]
