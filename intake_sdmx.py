@@ -312,7 +312,7 @@ class SDMXDataflows(Catalog):
             text[str] : space-separated words
             operator[str[: either "&" or "|" meaning AND or OR
 
-        Return: :instance:`SDMXDataflows`
+        Return: instance of :class:`SDMXDataflows`
         """
         if operator not in ["&", "|"]:
             raise ValueError(f"Operator must be one of '&' or '|'. {operator} given.")

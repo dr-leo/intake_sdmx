@@ -6,7 +6,7 @@ Required dependencies
 
 **intake_sdmx** is a pure `Python <https://python.org>`_ package requiring Python 3.7 or higher,    see `the Python website <https://www.python.org/downloads/>`_. 
 It is  recommended to use a scientific Python distribution such as 
-  `Anaconda <https://store.continuum.io/cshop/anaconda/>`_.
+`Anaconda <https://store.continuum.io/cshop/anaconda/>`_.
   
 **intake_sdmx** also depends on:
 

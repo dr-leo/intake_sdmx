@@ -11,7 +11,8 @@ dist-name = "intake_sdmx"
 description-file = "README.rst"
 requires = [
     "pandasdmx[cache] >= 1.7.0",
-    "intake >= 0.6.5"]
+    "intake >= 0.6.5",
+    "msgpack"]
 requires-python = ">=3.7.8,<4"
 keywords = "statistics, SDMX, intake, data, economics, science, plot"
 classifiers = [
