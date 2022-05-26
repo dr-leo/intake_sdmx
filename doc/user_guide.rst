@@ -129,7 +129,7 @@ Each value is None until it is accessed.
     as this could take forever.
 
 While with pandaSDMX, you would have performed these searches in a pandas DataFrame, a catalog cannot be exported to a DataFrame. Well, you can convert a list of dataflow names to aboveDataFrame in a single line and do more sophisticated filtering. 
-Anyway, we choose ùne_rt_a`for further analysis.
+Anyway, we choose `une_rt_a` for further analysis.
 
 
 Exploring the data structure  
